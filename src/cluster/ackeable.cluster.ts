@@ -1,5 +1,10 @@
 import { Serializable } from 'child_process';
-import { InitializeCluster, InitializeQueuedCluster, QueuedCluster } from '.';
+import {
+  ClusterCallback,
+  InitializeCluster,
+  InitializeQueuedCluster,
+  QueuedCluster,
+} from '.';
 import logger from '../logger';
 import { ClusterMessage } from './cluster.message';
 import { TaskMessage } from './task.message';
@@ -7,24 +12,39 @@ import { TaskMessage } from './task.message';
 export class AckeableCluster<ContentType> extends QueuedCluster<ContentType> {
   #inboxQueue = new Map<string, Serializable>();
 
-  protected constructor(args: InitializeCluster<TaskMessage<ContentType>>, maxEntities?: number) {
+  protected constructor(
+    args: InitializeCluster<TaskMessage<ContentType>>,
+    maxEntities?: number,
+  ) {
     super(
       {
         ...args,
         callback: (pid, message) =>
-          Promise.resolve(args.callback(pid, message)).then(() => {
-            logger.ackeableFork(`Acknowledging message with key: ${message?.key}`);
-            message?.key && this.#ack(message.key);
-          }),
+          this.ackableCallback(args.callback, pid, message),
       },
       maxEntities,
     );
   }
 
+  protected ackableCallback(
+    originalCb: ClusterCallback<TaskMessage<ContentType>>,
+    ...[pid, message]: Parameters<
+      InitializeCluster<TaskMessage<ContentType>>['callback']
+    >
+  ) {
+    return Promise.resolve(originalCb(pid, message))
+      .then(() => {
+        message?.key && this.#ack(message.key);
+      })
+      .catch(logger.ackeableFork);
+  }
+
   static from<ContentType extends Serializable>({
     maxEntities,
     ...args
-  }: InitializeQueuedCluster<TaskMessage<ContentType>>): AckeableCluster<ContentType> {
+  }: InitializeQueuedCluster<
+    TaskMessage<ContentType>
+  >): AckeableCluster<ContentType> {
     const instance = new this(args, maxEntities);
 
     return instance;
@@ -33,7 +53,11 @@ export class AckeableCluster<ContentType> extends QueuedCluster<ContentType> {
   send(message: Serializable): ClusterMessage<Serializable> {
     const sent = super.send(message);
     this.#inboxQueue.set(sent.key, message);
-    logger.ackeableFork(`Message sent to inbox queue with hash: ${sent.key}`);
+    logger.ackeableFork(
+      `Message sent to inbox queue with hash: ${sent.key} size: ${
+        this.#inboxQueue.size
+      }`,
+    );
     return sent;
   }
 
@@ -48,7 +72,10 @@ export class AckeableCluster<ContentType> extends QueuedCluster<ContentType> {
       const deleted = this.#inboxQueue.delete(key);
 
       logger.ackeableFork(
-        deleted ? `Acknowledged message with key: ${key}` : `Failed to acknowledge message with key: ${key}`,
+        (deleted
+          ? `Acknowledged message with key: ${key}`
+          : `Failed to acknowledge message with key: ${key}`) +
+          ` size: ${this.#inboxQueue.size}`,
       );
 
       return true;
@@ -58,10 +85,3 @@ export class AckeableCluster<ContentType> extends QueuedCluster<ContentType> {
     }
   }
 }
-
-// const sent = super.send(message);
-
-// this.#inboxQueue.set(sent.key, message);
-// logger.fork(`Message sent to inbox queue with hash: ${sent.key}`);
-
-// return sent;
