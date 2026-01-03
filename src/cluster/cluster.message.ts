@@ -1,7 +1,7 @@
 import { Serializable } from 'node:child_process';
 
 export class ClusterMessage<Message = Serializable> {
-  __name = this.constructor.name;
+  readonly __name = this.constructor.name;
 
   message: Message;
   key: string;
