@@ -1,12 +1,8 @@
 import { Serializable } from 'child_process';
-import {
-  ClusterCallback,
-  InitializeCluster,
-  InitializeQueuedCluster,
-  QueuedCluster,
-} from '.';
+import { ClusterCallback, InitializeCluster, InitializeQueuedCluster } from '.';
 import logger from '../logger';
 import { ClusterMessage } from './cluster.message';
+import { QueuedCluster } from './queued-cluster';
 import { TaskMessage } from './task.message';
 
 export class AckeableCluster<ContentType> extends QueuedCluster<ContentType> {
@@ -24,6 +20,15 @@ export class AckeableCluster<ContentType> extends QueuedCluster<ContentType> {
       },
       maxEntities,
     );
+  }
+
+  protected getInboxMessage(key: string) {
+    if (!key) {
+      logger.ackeableFork('Attempted to get inbox message with empty key');
+      return;
+    }
+
+    return this.#inboxQueue.get(key);
   }
 
   protected ackableCallback(
@@ -52,6 +57,7 @@ export class AckeableCluster<ContentType> extends QueuedCluster<ContentType> {
 
   send(message: Serializable): ClusterMessage<Serializable> {
     const sent = super.send(message);
+
     this.#inboxQueue.set(sent.key, message);
     logger.ackeableFork(
       `Message sent to inbox queue with hash: ${sent.key} size: ${
