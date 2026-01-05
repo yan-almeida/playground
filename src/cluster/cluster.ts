@@ -39,7 +39,10 @@ const DEFAULT_CLUSTER_SIZE = 50;
  * });
  * ```
  */
-export abstract class Cluster<CbMessage = Serializable, SendReturn extends ClusterMessage | boolean = boolean> {
+export abstract class Cluster<
+  CbMessage = Serializable,
+  SendReturn extends ClusterMessage | boolean = boolean,
+> {
   protected file: string;
   protected size = 0;
 
@@ -55,7 +58,10 @@ export abstract class Cluster<CbMessage = Serializable, SendReturn extends Clust
     return this.#processes.size;
   }
 
-  protected constructor({ size = DEFAULT_CLUSTER_SIZE, ...args }: InitializeCluster<CbMessage>) {
+  protected constructor({
+    size = DEFAULT_CLUSTER_SIZE,
+    ...args
+  }: InitializeCluster<CbMessage>) {
     this.size = size;
     this.#callback = args.callback;
     this.file = args.file;
@@ -85,7 +91,19 @@ export abstract class Cluster<CbMessage = Serializable, SendReturn extends Clust
       logger.fork(`Process is already killed, cannot send message.`);
       return;
     }
-    logger.fork(`Sending message to ${process.pid} - ${JSON.stringify(message)}`);
+    logger.fork(
+      `Sending message to ${process.pid} - ${JSON.stringify(message)}`,
+    );
+
+    if (ClusterMessage.instanceof(message)) {
+      process.send(message);
+
+      logger.fork(
+        `Sent message with key: ${message.key} - already cluster message`,
+      );
+
+      return message;
+    }
 
     const hash = CheckSumGenerator.toHash(Buffer.from(JSON.stringify(message)));
 
@@ -137,12 +155,16 @@ export abstract class Cluster<CbMessage = Serializable, SendReturn extends Clust
         return;
       }
 
-      logger.fork(`${child.pid}: Child process exited with code ${code} and signal ${signal} - respawning`);
+      logger.fork(
+        `${child.pid}: Child process exited with code ${code} and signal ${signal} - respawning`,
+      );
       this.#spawnWorker(file, callback);
     });
 
     child.on('error', (error) => {
-      logger.fork(`${child.pid}: Child process encountered an error: ${error.message}`);
+      logger.fork(
+        `${child.pid}: Child process encountered an error: ${error.message}`,
+      );
       this.kill(child.pid, true);
     });
 
