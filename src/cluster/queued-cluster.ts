@@ -1,25 +1,32 @@
 import { Serializable } from 'node:child_process';
-import { Cluster, InitializeCluster, InitializeQueuedCluster } from '.';
+import { InitializeCluster, InitializeQueuedCluster } from '.';
 import logger from '../logger';
 import { CheckSumGenerator } from '../utils/check-sum.generator';
 import { SafeJSONParse } from '../utils/json.parse';
 import { MaxNotifiableMap } from '../utils/max-notifiable.map';
 import { NotifiableMap } from '../utils/notifiable.map';
+import { Cluster } from './cluster';
 import { ClusterMessage } from './cluster.message';
 import { TaskMessage } from './task.message';
 
 const MAX_ENTITIES = 1000;
 const MIN_ENTITIES = 10;
 
-export class QueuedCluster<ContentType> extends Cluster<TaskMessage<ContentType>, ClusterMessage<Serializable>> {
+export class QueuedCluster<ContentType> extends Cluster<
+  TaskMessage<ContentType>,
+  ClusterMessage<Serializable>
+> {
   #queue: NotifiableMap<unknown>;
 
-  protected constructor(args: InitializeCluster<TaskMessage<ContentType>>, maxEntities: number = MIN_ENTITIES) {
+  protected constructor(
+    args: InitializeCluster<TaskMessage<ContentType>>,
+    maxEntities: number = MIN_ENTITIES,
+  ) {
     super(args);
 
-    this.#queue = new MaxNotifiableMap<unknown>(Math.min(maxEntities, MIN_ENTITIES, MAX_ENTITIES)).whenReachMax(
-      this.#forceRespawn.bind(this),
-    );
+    this.#queue = new MaxNotifiableMap<unknown>(
+      Math.min(maxEntities, MIN_ENTITIES, MAX_ENTITIES),
+    ).whenReachMax(this.#forceRespawn.bind(this));
   }
 
   static from<ContentType extends Serializable>({
@@ -55,12 +62,16 @@ export class QueuedCluster<ContentType> extends Cluster<TaskMessage<ContentType>
     }
 
     logger.fork(`Forcing respawn with old size: ${this.size}`);
-    logger.fork(`Forcing respawn with old processess size: ${this.totalProcesses}`);
+    logger.fork(
+      `Forcing respawn with old processess size: ${this.totalProcesses}`,
+    );
 
     this.initialize(newSize);
 
     logger.fork(`Forcing respawn with new size: ${this.size}`);
-    logger.fork(`Forcing respawn with new processess size: ${this.totalProcesses}`);
+    logger.fork(
+      `Forcing respawn with new processess size: ${this.totalProcesses}`,
+    );
 
     this.#requeue();
   }
