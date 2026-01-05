@@ -13,8 +13,13 @@ process.on('message', (payload: ClusterMessage<number>) => {
 
   const result = fib(35);
 
-  const response = new TaskMessage<number>({ key: payload.key, message: payload.message + result });
+  const response = new TaskMessage<number>({
+    key: payload.key,
+    message: payload.message + result,
+  });
   process.send(response);
-  logger.task(`${process.pid}: sent result ${result} for message ${payload.message}`);
+  logger.task(
+    `${process.pid}: sent result ${result} for message ${payload.message}`,
+  );
 });
 // TODO: processo ainda fica enviando as mensagens, mas elas deveria ir, majoritariamente pra uma fila e somente sumirem ao serem consumidas!!!!!
