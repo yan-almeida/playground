@@ -85,6 +85,10 @@ export abstract class Cluster<
   abstract send(message: Serializable): SendReturn;
 
   protected internalSend(message: Serializable): ClusterMessage {
+    if (message == null || typeof message === 'undefined') {
+      throw new Error('Message cannot be null or undefined');
+    }
+
     const process = this.process;
 
     if (!process || process.killed) {
