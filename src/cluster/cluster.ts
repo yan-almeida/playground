@@ -1,5 +1,10 @@
 import { ChildProcess, fork, Serializable } from 'node:child_process';
-import { ClusterCallback, ClusterSignal, InitializeCluster } from '.';
+import {
+  ClusterCallback,
+  ClusterHealth,
+  ClusterSignal,
+  InitializeCluster,
+} from '.';
 import logger from '../logger';
 import { roundRobin } from '../round-robin';
 import { CheckSumGenerator } from '../utils/check-sum.generator';
@@ -179,5 +184,17 @@ export abstract class Cluster<
 
     this.#processes.set(child.pid, child);
     this.#recreateBalancer();
+  }
+
+  abstract queuesToHealthCheck?(): Record<string, number>;
+
+  healthCheck(): ClusterHealth {
+    return {
+      totalWorkers: this.totalProcesses,
+      aliveWorkers: [...this.#processes.values()].filter((p) => !p.killed)
+        .length,
+      queuesSize: this?.queuesToHealthCheck(),
+      uptime: process.uptime(),
+    };
   }
 }
