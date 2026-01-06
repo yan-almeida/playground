@@ -57,14 +57,36 @@ export class AckeableCluster<ContentType> extends QueuedCluster<ContentType> {
 
   send(message: Serializable): ClusterMessage<Serializable> {
     const sent = super.send(message);
+    this.#setInboxQueue(sent.key, message);
+    return sent;
+  }
 
-    this.#inboxQueue.set(sent.key, message);
+  #setInboxQueue(key: string, message: Serializable): void {
+    const exists = this.#inboxQueue.has(key);
+
+    if (exists) {
+      logger.ackeableFork(
+        `Message already in inbox queue with hash: ${key} size: ${
+          this.#inboxQueue.size
+        }`,
+      );
+      return;
+    }
+
+    this.#inboxQueue.set(key, message);
+
     logger.ackeableFork(
-      `Message sent to inbox queue with hash: ${sent.key} size: ${
+      `Message sent to inbox queue with hash: ${key} size: ${
         this.#inboxQueue.size
       }`,
     );
-    return sent;
+  }
+
+  queuesToHealthCheck(): Record<string, number> {
+    return {
+      [`${AckeableCluster.name}_inbox`]: this.#inboxQueue.size,
+      ...super.queuesToHealthCheck(),
+    };
   }
 
   #ack(key?: string): boolean {
