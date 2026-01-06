@@ -1,4 +1,5 @@
 import ms from 'ms';
+import { QueueStatus } from '.';
 import logger from '../logger';
 
 export interface RetryConfig {
@@ -34,13 +35,19 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
 
 class RetryStrategyError extends Error {}
 
-export class RetryStrategy {
+export class RetryStrategy implements QueueStatus {
   #config: RetryConfig;
   #retryState = new Map<string, RetryState>();
 
   constructor(config: Partial<RetryConfig> = {}) {
     this.#config = { ...DEFAULT_RETRY_CONFIG, ...config };
     this.#validateConfig();
+  }
+
+  queueStatus(): Record<string, number> {
+    return {
+      [`${RetryStrategy.name}_retry_state`]: this.#retryState.size,
+    };
   }
 
   #validateConfig(): void {
