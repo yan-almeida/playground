@@ -32,5 +32,6 @@ const cluster = AckeableCluster.from<number>({
 (async () => {
   for await (const data of generate()) {
     cluster.send(data);
+    console.info(cluster.healthCheck());
   }
 })();
