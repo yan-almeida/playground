@@ -1,7 +1,14 @@
+import { QueueStatus } from '.';
 import logger from '../logger';
 
-export class RetryScheduler {
+export class RetryScheduler implements QueueStatus {
   #timeouts = new Map<string, NodeJS.Timeout>();
+
+  queueStatus(): Record<string, number> {
+    return {
+      [`${RetryScheduler.name}_timeouts`]: this.#timeouts.size,
+    };
+  }
 
   schedule(key: string, delayMs: number, callback: () => void): void {
     this.cancel(key);
