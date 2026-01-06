@@ -30,3 +30,14 @@ export interface InitializeAutoRecCluster<Message = Serializable>
 export enum ClusterSignal {
   RESPAWNABLE = 999901,
 }
+
+export interface QueueStatus {
+  queueStatus(): Record<string, number>;
+}
+
+export interface ClusterHealth {
+  totalWorkers: number;
+  aliveWorkers: number;
+  queuesSize?: Record<string, number>;
+  uptime: number;
+}
