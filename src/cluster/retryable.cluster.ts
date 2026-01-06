@@ -103,6 +103,14 @@ export class RetryableCluster<
     });
   }
 
+  queuesToHealthCheck(): Record<string, number> {
+    return {
+      ...this.#retryScheduler.queueStatus(),
+      ...this.#retryStrategy.queueStatus(),
+      ...super.queuesToHealthCheck(),
+    };
+  }
+
   kill(pid?: number, shouldRespawn?: boolean): void {
     if (!pid) {
       this.#retryScheduler.cancel();
