@@ -1,7 +1,6 @@
 import { Serializable } from 'node:child_process';
 import { InitializeCluster, InitializeQueuedCluster } from '.';
 import logger from '../logger';
-import { CheckSumGenerator } from '../utils/check-sum.generator';
 import { SafeJSONParse } from '../utils/json.parse';
 import { MaxNotifiableMap } from '../utils/max-notifiable.map';
 import { NotifiableMap } from '../utils/notifiable.map';
@@ -41,15 +40,12 @@ export class QueuedCluster<ContentType> extends Cluster<
   send(message: Serializable): ClusterMessage<Serializable> {
     const sent = this.internalSend(message);
 
-    const content = JSON.stringify(message);
-    const hash = CheckSumGenerator.toHash(Buffer.from(content));
-
     if (!sent) {
-      this.#queue.set(hash, message);
-      logger.fork(`Message queued with hash: ${hash}`);
+      this.#queue.set(sent.key, message);
+      logger.fork(`Message queued with hash: ${sent.key}`);
     }
 
-    return new ClusterMessage({ key: hash, message });
+    return sent;
   }
 
   #forceRespawn() {
@@ -88,5 +84,11 @@ export class QueuedCluster<ContentType> extends Cluster<
       this.#queue.delete(hash);
       logger.fork(`Requeued message with key: ${hash}`);
     }
+  }
+
+  queuesToHealthCheck(): Record<string, number> {
+    return {
+      default: this.#queue.size,
+    };
   }
 }
