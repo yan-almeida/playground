@@ -35,7 +35,9 @@ const cluster = RetryableCluster.from<number>({
 });
 
 cluster.send(20);
-
+setInterval(() => {
+  console.info(cluster.healthCheck());
+}, ms('1.5s'));
 // (async () => {
 //   for await (const data of generate()) {
 //     cluster.send(data);
